@@ -2,9 +2,8 @@ import express from "express";
 import routes from "./routes";
 import "dotenv/config";
 import "./utils/connectMongoDb";
-const app = express();
-
 const port = 3000;
+const app = express();
 
 app.use(express.json());
 app.use("/api", routes);
