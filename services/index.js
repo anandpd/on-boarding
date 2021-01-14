@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import moment from 'moment';
 
 const services = {
-  checkUserExist: async function findWithEmail(modelObj, value, registration = true) {
+  checkUserExist: async (modelObj, value, registration = true) => {
     const user = await modelObj.findOne({ email: value });
     if (registration) {
       if (user) throw new Error('User already exist !!');
@@ -11,55 +11,55 @@ const services = {
 
     return user;
   },
-  checkContactExist: async function checkContactExist(modelObj, value, registration = true) {
+  checkContactExist: async (modelObj, value, registration = true) => {
     const contact = await modelObj.findOne({ contact: value });
     if (registration) {
       if (contact) throw new Error('User with this contact already exist !!')
     }
   },
 
-  findContact: async function findWithContact(model, value) {
+  findContact: async (model, value) => {
     const user = await model.findOne({ contact: value });
     if (!user) throw new Error('User doesn"t exist !!');
     return user;
   },
 
-  createModel: async function createModel(modelObj, body) {
+  createModel: async (modelObj, body) => {
     const newModel = new modelObj(body);
     return await newModel.save();
   },
 
-  authenticatePassword: async function authenticatePassword(originalPassword, password) {
+  authenticatePassword: async (originalPassword, password) => {
     const match = await bcrypt.compare(originalPassword, password);
     if (!match) return false;
     return true;
   },
 
-  verifyUser: async function verifyUser(emailToken) {
+  verifyUser: async (emailToken) => {
     const verified = jwt.verify(emailToken, process.env.EMAIL_SECRET);
     if (!verified) throw new Error('Email not verified !!')
     return verified;
   },
 
-  updateModel: async function updateModel(modelObj) {
+  updateModel: async (modelObj) => {
     modelObj.isVerified = true;
     await modelObj.save();
   },
 
-  sendOTP: async function sendOTP(modelObj, key) {
+  sendOTP: async (modelObj, key) => {
     modelObj[key] = 123456
     let currentDate = moment(new Date());
     modelObj.otpSentTime = currentDate;
     await modelObj.save();
   },
 
-  hashPasswordAndUpdate: async function hashPassword(modelObj, tf) {
+  hashPasswordAndUpdate: async (modelObj, tf) => {
     const salt = await bcrypt.genSalt(10);
     modelObj[tf] = await bcrypt.hash(modelObj[tf], salt);
     await modelObj.save();
   },
 
-  verifyOTP: async function verifyotp(modelObj, _otp) {
+  verifyOTP: async (modelObj, _otp) => {
     const { otp, otpSentTime } = modelObj;
     if (_otp !== otp) throw new Error('Invalid OTP');
     if (moment(new Date()).diff(otpSentTime, 'days') > 1) throw new Error('otp expired, try again !!')
@@ -67,13 +67,13 @@ const services = {
     await modelObj.save();
   },
 
-  findModelByid: async function findModel(model, id) {
+  findModelByid: async (model, id) => {
     const modelObj = await model.findById(id);
     if (!modelObj) throw new Error('Not found !');
     return modelObj;
   },
 
-  removeModel: async function removeUser(modelObj) {
+  removeModel: async (modelObj) => {
     modelObj.isDeleted = true;
     await modelObj.save();
   }
