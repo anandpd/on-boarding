@@ -2,12 +2,12 @@ import services from "../services";
 import { generateToken } from '../utils/generateToken';
 import User from "../models/User";
 import status from "../utils/statusCodes";
-import { contactValidation, loginValidation, registrationValidation } from "../utils/validations";
+import { contactValidation, loginValidation, OTPfieldValidation, registrationValidation } from "../utils/validations";
 import { sendEmailTo } from "../utils/sendMail";
 
 export const registerUser = async (req, res) => {
   registrationValidation(req.body);
-  if (req.body.contact.toString().length < 10) throw new Error('contact must be 10 digits long !')
+
   const { email } = req.body;
   await services.checkUserExist(User, email);
   var user = await services.createModel(User, req.body);
@@ -20,7 +20,7 @@ export const registerUser = async (req, res) => {
   }
 
   const userToken = generateToken(payload);
-  const emailToken = await services.generateToken(payload, process.env.EMAIL_SECRET, "1d")
+  const emailToken = generateToken(payload, process.env.EMAIL_SECRET, "1d")
 
   sendEmailTo(email, emailToken, true)
     .then((success) => {
@@ -28,7 +28,7 @@ export const registerUser = async (req, res) => {
         success: true,
         ip: req.connection.remoteAddress,
         message: "User added successfully, link sent to your email !!",
-        token: userToken,
+        authToken: userToken,
       });
     })
     .catch((err) => {
@@ -37,19 +37,14 @@ export const registerUser = async (req, res) => {
 };
 
 export const loginUser = async (req, res) => {
-
-  const { error } = loginValidation(req.body);
-  if (error) throw new Error(error.message);
-
+  loginValidation(req.body);
   const { email, password } = req.body;
-  const user = await services.checkUserExist(User, email);
-
+  const user = await services.checkUserExist(User, email, false);
   const payload = {
     user: {
       id: user.id
     }
   }
-  if (!user) throw new Error("Email does not exists or is invalid !");
   if (!(await services.authenticatePassword(password, user.password))) {
     throw new Error("Invalid credentials !");
   }
@@ -58,12 +53,12 @@ export const loginUser = async (req, res) => {
   const emailToken = generateToken(payload, process.env.EMAIL_SECRET, "1d");
 
   sendEmailTo(email, emailToken)
-    .then((data) => {
+    .then(data => {
       res.status(status.ok).json({
         success: true,
         ip: req.connection.remoteAddress,
         message: `${user.name} Logged in successfully !`,
-        token: userToken,
+        authToken: userToken,
       });
     })
     .catch((err) => {
@@ -73,21 +68,32 @@ export const loginUser = async (req, res) => {
 
 export const verifyEmail = async (req, res) => {
   const { emailToken } = req.params;
-  const verifiedUser = services.verifyUser(emailToken);
-  if (!verifiedUser) throw new Error("Email not verified !");
-  const updatedUser = services.updateModel(verifiedUser);
-  await updatedUser.save();
+  let verifiedUser = services.verifyUser(emailToken);
+  verifiedUser = services.updateModel(verifiedUser);
   res
     .status(status.accepted)
     .json({ success: true, message: "Email verified successfully !!" });
 };
 
-export const verifyContact = async (req, res) => {
+export const sendOTPtoContact = async (req, res) => {
   contactValidation(req.body);
-  if (req.body.contact.toString().length() < 10) throw new Error('Contact must be 10 digits !');
+  const { contact, countryCode } = req.body;
+  const user = await services.findContact(User, contact);
+  services.sendOTP(user, "otp");
+  res.status(status.accepted).json({ success: true, message: `OTP successfully sent to : ${countryCode}-${contact}` })
+}
 
+export const verifyOtp = async (req, res) => {
+  OTPfieldValidation(req.body);
   const { contact } = req.body;
   const user = await services.findContact(User, contact);
-  services.updateOTP(user);
-  res.status(status.ok).json({ success: true, message: `OTP successfully sent to : ${contact}` })
+  await services.verifyOTP(user, req.body.otp)
+  res.status(status.accepted).json({ success: true, message: "Contact verified successfully !!" });
+
+}
+
+export const removeUser = async (req, res) => {
+  const user = await services.findModelByid(User, req.user.id);
+  services.removeModel(user);
+  res.status(status.ok).json({ success: true, message: 'Deleted successfully !' });
 }

@@ -11,16 +11,18 @@ export const registrationValidation = data => {
     })
     .validate(data);
 
-  if (error) throw new Error(error.message)
+  if (error) throw new Error(error.message);
+  if (data.contact.toString().length < 10) throw new Error('contact must be 10 digits long !')
 };
 
 export const loginValidation = data => {
-  return joi
+  const { error } = joi
     .object({
       email: joi.string().required().email(),
       password: joi.string().required().min(6),
     })
     .validate(data);
+  if (error) throw new Error(error.message)
 };
 
 export const contactValidation = data => {
@@ -29,4 +31,13 @@ export const contactValidation = data => {
     countryCode: joi.number().integer()
   }).validate(data);
   if (error) throw new Error(error.message);
+  if (data.contact.toString().length < 10) throw new Error('Email must be 10 digits long !')
+}
+
+export const OTPfieldValidation = data => {
+  const { error } = joi.object({
+    contact: joi.number().integer(),
+    otp: joi.number().integer()
+  }).validate(data)
+  if (error) throw new Error(error.message)
 }
